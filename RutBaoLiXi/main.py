@@ -101,10 +101,10 @@ def play():
         check_play = False
 
     if button_submit.draw(screen):
-        for i in range(1, int(drop_down.selected_option) + 1):
+        for i in range(1, int(drop_down.selected_option[0]) + 1):
             exec(f"button_image2_baolixi{i}.enable_button()")
         else:
-            for i in range(int(drop_down.selected_option) + 1, 7):
+            for i in range(int(drop_down.selected_option[0]) + 1, 7):
                 exec(f"button_image2_baolixi{i}.disable_button()")
 
         check_play = False
@@ -125,13 +125,14 @@ def choose_value():
 
     if button_reset.draw(screen):
         for i in range(1, 7):
+            exec("button_image2_baolixi{}.dic_value = {}".format(i, "{10000: 0, 20000: 0, 50000: 0, 100000: 0, 200000: 0, 500000: 0}"))
             exec(f"button_image2_baolixi{i}.value = 0")
 
     if button_submit2.draw(screen):
-        for i in range(1, int(drop_down.selected_option) + 1):
+        for i in range(1, int(drop_down.selected_option[0]) + 1):
             exec(f"button_image3_baolixi{i}.enable_button()")
         else:
-            for i in range(int(drop_down.selected_option) + 1, 7):
+            for i in range(int(drop_down.selected_option[0]) + 1, 7):
                 exec(f"button_image3_baolixi{i}.disable_button()")
 
         check_choose_value = False
@@ -264,7 +265,8 @@ class Image_Button1:
 
 
 class Image_Button2:
-    def __init__(self, x=0, y=0, image=None, space=0, disable=True, area=None):
+    def __init__(self, x=0, y=0, image=None, space=0, disable=True, area=None, change_area=None):
+        self.mode = True
         if area is None:
             area = []
         self.x = x
@@ -285,6 +287,7 @@ class Image_Button2:
         self.check = False
         self.check_time = False
         self.area = area
+        self.change_area = change_area
         self.active = False
         self.active_text = False
         self.text = pygame.font.SysFont("Times New Roman", 50, True).render(
@@ -293,38 +296,54 @@ class Image_Button2:
         self.image2 = pygame.surface.Surface((0, 0))
         self.list_image = [image_10k, image_20k, image_50k, image_100k, image_200k, image_500k]
         self.list_value = [10000, 20000, 50000, 100000, 200000, 500000]
+        self.dic_value = {10000: 0, 20000: 0, 50000: 0, 100000: 0, 200000: 0, 500000: 0}
         self.move = 0
         self.start = 0
+        self.success = True
 
     def draw(self, screen, td, mode):
+        if self.success:
+            self.mode = mode
         if not self.disable:
             if self.active:
+                self.success = False
                 self.value_space = self.space
                 self.image2 = pygame.transform.rotate(self.list_image[self.pos], 90)
                 self.move += 200 * td
-                if mode:
+                if self.mode:
                     screen.blit(self.image2,
                                 (self.x + self.width / 2 - self.image2.get_width() / 2,
                                  self.y - self.height + self.move))
                     if self.move >= self.y + self.height / 2 - self.image2.get_height() - self.space:
                         self.active = False
                         self.move = 0
-                        self.value += self.list_value[self.pos]
-                elif not mode and self.value - self.list_value[self.pos] >= 0:
+                        self.dic_value[self.list_value[self.pos]] += 1
+                        self.success = True
+                elif not self.mode and self.dic_value[self.list_value[self.pos]] > 0:
                     screen.blit(self.image2,
                                 (self.x + self.width / 2 - self.image2.get_width() / 2,
                                  self.y + self.height / 2 - self.image2.get_height() - self.space - self.move))
                     if self.y + self.height / 2 - self.image2.get_height() - self.space - self.move <= self.y - self.height:
                         self.active = False
                         self.move = 0
-                        self.value -= self.list_value[self.pos]
+                        self.dic_value[self.list_value[self.pos]] -= 1
+                        self.success = True
                 else:
                     self.active = False
+                    self.check_time = False
+                    self.active_text = True
                     self.move = 0
+                    self.success = True
+                self.value = sum([i * self.dic_value[i] for i in self.dic_value.keys()])
             if self.active_text:
                 if not self.check_time:
-                    self.text = pygame.font.SysFont("Times New Roman", 50, True).render(
-                        f"Số tiền ở trong bao lì xì là: {self.value}đ", True, "#00FF00")
+                    if self.clicked_s:
+                        self.clicked_s = False
+                        self.text = pygame.font.SysFont("Times New Roman", 50, True).render(
+                            f"Số tiền ở trong bao lì xì là: {self.value}đ", True, "#00FF00")
+                    else:
+                        self.text = pygame.font.SysFont("Times New Roman", 50, True).render(
+                            f"Không có mệnh giá {self.list_value[self.pos]} trong bao lì xì!", True, "#00FF00")
                     self.start = time.perf_counter()
                     self.check_time = True
                 if time.perf_counter() - self.start >= 3:
@@ -342,22 +361,23 @@ class Image_Button2:
                 if pygame.mouse.get_pressed()[0]:
                     self.check = True
                     self.clicked_r = True
+                    self.clicked_s = False
+                    self.clicked_l = False
+                    return True
                 elif pygame.mouse.get_pressed()[1]:
                     self.check = True
                     self.clicked_s = True
+                    self.clicked_r = False
+                    self.clicked_l = False
+                    self.active_text = True
                 elif pygame.mouse.get_pressed()[2]:
                     self.check = True
                     self.clicked_l = True
-                else:
-                    if self.clicked_r:
-                        self.clicked_r = False
-                        return True
-                    if self.clicked_s:
-                        self.clicked_s = False
-                        self.active_text = True
-                    if self.clicked_l:
-                        self.clicked_l = False
+                    self.clicked_s = False
+                    self.clicked_r = False
+
                 self.value_space = self.space
+
             if not self.check:
                 self.value_space = 0
             elif not self.image_rect.collidepoint(mouse_pos):
@@ -367,7 +387,12 @@ class Image_Button2:
                             self.pos = pos
                             self.clicked_rect = True
                             break
+                    for pos, rect in enumerate(self.change_area + self.area):
+                        if rect.collidepoint(mouse_pos) and not self.active:
+                            break
                     else:
+                        self.active_text = False
+                        self.check_time = False
                         self.check = False
                 else:
                     if self.clicked_rect:
@@ -460,25 +485,6 @@ image_baolixi = pygame.image.load("asset\\Image\\baolixi.jpg").convert_alpha()
 image_baolixi = pygame.transform.smoothscale(image_baolixi,
                                              (image_baolixi.get_width() * 0.25, image_baolixi.get_height() * 0.25))
 
-area = [button_image_10k.image_rect, button_image_20k.image_rect, button_image_50k.image_rect,
-        button_image_100k.image_rect, button_image_200k.image_rect, button_image_500k.image_rect]
-
-button_image2_baolixi1 = Image_Button2(375, 400, image_baolixi, 50, area=area)
-button_image2_baolixi2 = Image_Button2(525, 400, image_baolixi, 50, area=area)
-button_image2_baolixi3 = Image_Button2(675, 400, image_baolixi, 50, area=area)
-button_image2_baolixi4 = Image_Button2(825, 400, image_baolixi, 50, area=area)
-button_image2_baolixi5 = Image_Button2(975, 400, image_baolixi, 50, area=area)
-button_image2_baolixi6 = Image_Button2(1125, 400, image_baolixi, 50, area=area)
-
-x = screen.get_width() / 6
-space = (x - image_baolixi.get_width()) / 2
-button_image3_baolixi1 = Image_Button3(x * 0 + space, 400, image_baolixi, 50)
-button_image3_baolixi2 = Image_Button3(x * 1 + space, 400, image_baolixi, 50)
-button_image3_baolixi3 = Image_Button3(x * 2 + space, 400, image_baolixi, 50)
-button_image3_baolixi4 = Image_Button3(x * 3 + space, 400, image_baolixi, 50)
-button_image3_baolixi5 = Image_Button3(x * 4 + space, 400, image_baolixi, 50)
-button_image3_baolixi6 = Image_Button3(x * 5 + space, 400, image_baolixi, 50)
-
 button_plus = Button.Button_TEXT("+",
                                  (None, 40),
                                  50,
@@ -502,6 +508,26 @@ button_reset = Button.Button_TEXT("RESET",
                                   (screen.get_width() / 2 - 300, screen.get_height() / 4 - 150),
                                   (255, 0, 0),
                                   10)
+
+area = [button_image_10k.image_rect, button_image_20k.image_rect, button_image_50k.image_rect,
+        button_image_100k.image_rect, button_image_200k.image_rect, button_image_500k.image_rect]
+change_area = [button_plus.rect, button_minus.rect]
+
+button_image2_baolixi1 = Image_Button2(375, 400, image_baolixi, 50, area=area, change_area=change_area)
+button_image2_baolixi2 = Image_Button2(525, 400, image_baolixi, 50, area=area, change_area=change_area)
+button_image2_baolixi3 = Image_Button2(675, 400, image_baolixi, 50, area=area, change_area=change_area)
+button_image2_baolixi4 = Image_Button2(825, 400, image_baolixi, 50, area=area, change_area=change_area)
+button_image2_baolixi5 = Image_Button2(975, 400, image_baolixi, 50, area=area, change_area=change_area)
+button_image2_baolixi6 = Image_Button2(1125, 400, image_baolixi, 50, area=area, change_area=change_area)
+
+x = screen.get_width() / 6
+space = (x - image_baolixi.get_width()) / 2
+button_image3_baolixi1 = Image_Button3(x * 0 + space, 400, image_baolixi, 50)
+button_image3_baolixi2 = Image_Button3(x * 1 + space, 400, image_baolixi, 50)
+button_image3_baolixi3 = Image_Button3(x * 2 + space, 400, image_baolixi, 50)
+button_image3_baolixi4 = Image_Button3(x * 3 + space, 400, image_baolixi, 50)
+button_image3_baolixi5 = Image_Button3(x * 4 + space, 400, image_baolixi, 50)
+button_image3_baolixi6 = Image_Button3(x * 5 + space, 400, image_baolixi, 50)
 
 active = False
 value = -1
